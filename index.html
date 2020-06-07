@@ -7,11 +7,26 @@
   <title>Flappy Bird</title>
   <link rel="shortcut icon" type="image/x-icon" href="./images/bird.ico" />
   <style>
+    html,
     body {
       margin: 0;
+      padding: 0;
+      height: 100%;
+    }
+
+    body {
       display: flex;
       justify-content: center;
-      padding-top: 60px;
+      align-items: center;
+      background-image: url("./images/body-bg.jpg");
+      background-size: cover;
+      background-color: rgba(255, 255, 255, .15);
+      backdrop-filter: blur(15px);
+    }
+
+    #canvas {
+      width: 480px;
+      min-height: 640px;
     }
   </style>
 </head>
