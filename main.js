@@ -1,3 +1,10 @@
+/* 
+  ---------- Define some constants of component image ----------
+
+  HRW here means the ratio of its height to its width
+  This can help to keep the original shape of image
+*/
+
 const CANVAS_WIDTH = 480;
 const CANVAS_HEIGHT = 640;
 
@@ -38,15 +45,33 @@ pipe_up_img.src = "./images/pipe-green-up.png";
 base_img.src = "./images/base.png";
 restart_img.src = "./images/restart.png";
 
+/* 
+  ---------- Define component part ----------
+  
+  Component can be used as background / base / obstacles / cube(the bird) / score
+
+  They have different refresh mode:
+  1. looping:      base
+  2. Non-looping:  background / obstacles / cube
+  3. Specical:     score
+
+  They have some methods:
+  1. update:      draw it on the canvas
+  2. moveLeft:    change its position to make it a bit left
+  3. accelerate:  give it an upward speed, especically used for cube
+  4. hitWith:     collision detection of cube and obstacles
+  4. hitBottom:   check if the cube has got to the bottom
+*/
+
 function component(ctx, width, height, either, x, y, type) {
   this.type = type;
   this.width = width;
   this.height = height;
   this.x = x;
   this.y = y;
-  this.gravity = 0.3;
+  this.gravity = 0.3;    // This is used for imitating the gravity
   this.speedGravity = 0;
-  this.direction = true;
+  this.direction = true; // This is used for making animation of the cube in the welcome page
   if (this.type == "score") {
     this.num = either;
   }
@@ -89,6 +114,7 @@ function component(ctx, width, height, either, x, y, type) {
     var othertop = otherobj.y;
     var otherbottom = otherobj.y + otherobj.height;
     if (mybottom < othertop || mytop > otherbottom || myleft > otherright || myright < otherleft) {
+      // Check collision when the cube has got to a very top place(out of canvas)
       if (mybottom < 0 && myright >= otherleft && myright <= otherright) {
         return true;
       }
@@ -108,6 +134,14 @@ function component(ctx, width, height, either, x, y, type) {
   };
 }
 
+/* 
+  ---------- Define the game area ----------
+
+  Include the methods of all needed component:
+  1. Create components
+  2. Update components
+  3. Start and stop frame refreshing
+*/
 
 var myGameArea = {
   createCanvas: function () {
@@ -140,14 +174,16 @@ var myGameArea = {
 
   initTimer: function () {
     this.waitTimer = null;
-    this.interval = null;
+    this.playTimer = null;
     this.flopTimer = null;
   },
 
   drawRestart: function () {
+    // Draw the restart button on the canvas
     this.restart = new component(this.context, RESTART_WIDTH, RESTART_WIDTH * RESTART_HRW, restart_img, CANVAS_WIDTH / 2 - RESTART_WIDTH / 2, CANVAS_HEIGHT / 2 - RESTART_WIDTH * RESTART_HRW / 2, "image");
     this.restart.update();
     var that = this;
+    // When restart button is clicked, clear the canvas, init the components and then start the waiting page 
     document.onclick = function (e) {
       var clickedX = e.pageX - that.canvas.offsetLeft;
       var clickedY = e.pageY - that.canvas.offsetTop;
@@ -165,13 +201,19 @@ var myGameArea = {
   },
 
   updateBackground: function () {
+    // Directly redraw it
     this.background.update();
   },
 
   updateCube: function () {
+    // First, redraw it
     this.cube.update();
+
+    // Second, make some movements
+    // Imitate the pull by the natural gravity, specific ammount is added to the y speed, y speed is added to the y coordinate
     this.cube.speedGravity += this.cube.gravity;
     this.cube.y += this.cube.speedGravity;
+    // Imitate the flapping of bird, change different images in different clocks
     if ((this.frameno / 10) % 3 == 0) {
       this.cube.image = bird_down_img;
     } else if ((this.frameno / 10) % 3 == 1) {
@@ -182,7 +224,7 @@ var myGameArea = {
   },
 
   updateObstacles: function () {
-    // First we should append an obstacle
+    // First, append a new obstacle
     if (this.everyInterval(100)) {
       var x = this.canvas.width;
       // Height of the obstacle
@@ -199,21 +241,27 @@ var myGameArea = {
       this.obstacles.push(new component(this.context, PIPE_WIDTH, PIPE_WIDTH * PIPE_HRW, pipe_down_img, x, height + gap, "image"));
     }
 
+    // Second, remove redundant obstacles as well as to count the goal ones
     var goalObstacles = this.obstacles.filter(item => {
       return item.x + item.width == this.cube.x;
     });
-
     var seenObstacles = this.obstacles.filter(item => {
       return item.x + item.width > 0;
     });
     this.count += goalObstacles.length / 2;
     this.obstacles = seenObstacles;
+
+    // Third, redraw them
     this.obstacles.forEach(item => item.update());
+
+    // Fourth, make some movements
     this.obstacles.forEach(item => item.moveLeft());
   },
 
   updateBase: function () {
+    // First, redraw it
     this.base.update();
+    // Second, make some movements
     this.base.moveLeft();
     if (this.base.x == -(this.base.width)) {
       this.base.x = 0;
@@ -221,10 +269,12 @@ var myGameArea = {
   },
 
   updateScore: function () {
+    // Directly redraw it
     this.score.update();
     this.score.num = this.count;
   },
 
+  // Waiting page, redraw background / base / cube, cube should move ups and downs
   updateWhenWait: function () {
     this.updateBackground();
     this.updateBase();
@@ -240,6 +290,7 @@ var myGameArea = {
     myGameArea.frameno++;
   },
 
+  // Flopping page, redraw beckground / obstacles / base / score / cube, cube should move down untill reaching the bottom
   updateWhenFlop: function () {
     this.background.update();
     this.obstacles.forEach(item => {
@@ -251,6 +302,7 @@ var myGameArea = {
     this.cube.y += 10;
   },
 
+  // bind jump action with click event
   bindKeys: function () {
     // Do this because inner function cannot get 'this' of outer scope
     var cube = this.cube;
@@ -262,6 +314,7 @@ var myGameArea = {
     };
   },
 
+  // Start refreshing of waiting
   startWaiting: function () {
     this.frameno = 0;
     if (!this.waitTimer) {
@@ -269,31 +322,37 @@ var myGameArea = {
     }
   },
 
+  // Stop refreshing of waiting
   stopWaiting: function () {
     clearInterval(this.waitTimer);
   },
 
+  // Start refreshing of playing
   startPlaying: function () {
     this.bindKeys();
-    if (!this.interval) {
-      this.interval = setInterval(update, 20);
+    if (!this.playTimer) {
+      this.playTimer = setInterval(updatePlay, 20);
     }
   },
 
+  // Stop refreshing of playing
   stopPlaying: function () {
-    clearInterval(this.interval);
+    clearInterval(this.playTimer);
   },
 
+  // Start refreshing of flopping
   startFlopping: function () {
     if (!this.flopTimer) {
       this.flopTimer = setInterval(updateFlop, 20);
     }
   },
 
+  // Stop refreshing of flopping
   stopFlopping: function () {
     clearInterval(this.flopTimer);
   },
 
+  // Util to check every wanted interval
   everyInterval: function (n) {
     if ((this.frameno / n) % 1 == 0) {
       return true;
@@ -302,18 +361,30 @@ var myGameArea = {
   }
 };
 
+/* 
+  ---------- Define combination of update ----------
+
+  Each frame we should update several stuffs
+  For Convenience, let's just make some combinations of those which should be updated in specific progress
+  1. Waiting progress
+  2. Playing progress
+  3. Flopping progress
+*/
+
 function updateWait() {
+  // Check if it's in waiting progress in every update
   if (!waiting) {
     myGameArea.stopWaiting();
     document.onclick = null;
     myGameArea.startPlaying();
   }
+
   myGameArea.clearCanvas();
   myGameArea.updateWhenWait();
 }
 
-function update() {
-  // We have to put it here to check hit in every update
+function updatePlay() {
+  // Check hit in every update
   var final = false;
   for (var i = 0; i < myGameArea.obstacles.length; i++) {
     if (myGameArea.cube.hitWith(myGameArea.obstacles[i])) {
@@ -326,6 +397,7 @@ function update() {
     myGameArea.stopPlaying();
     final = true;
   }
+
   myGameArea.clearCanvas();
   myGameArea.updateBackground();
   myGameArea.updateCube();
@@ -333,23 +405,34 @@ function update() {
   myGameArea.updateBase();
   myGameArea.updateScore();
   myGameArea.frameno++;
+
   if (final) {
     myGameArea.drawRestart();
   }
 }
 
 function updateFlop() {
+  // Check hit in every update
   var final = false;
   if (myGameArea.cube.hitBottom(myGameArea.canvas)) {
     myGameArea.stopFlopping();
     final = true;
   }
+
   myGameArea.clearCanvas();
   myGameArea.updateWhenFlop();
+
   if (final) {
     myGameArea.drawRestart();
   }
 }
+
+/* 
+  ---------- Define the behavior when loaded ----------
+
+  First, init all components and timers
+  Second, bind "start playing" action with click event and just wait
+*/
 
 function init() {
   myGameArea.createCanvas();
@@ -372,6 +455,7 @@ function wait() {
 }
 
 var waiting = true;
+
 document.body.onload = function () {
   init();
   wait();
