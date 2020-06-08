@@ -182,18 +182,9 @@ var myGameArea = {
     // Draw the restart button on the canvas
     this.restart = new component(this.context, RESTART_WIDTH, RESTART_WIDTH * RESTART_HRW, restart_img, CANVAS_WIDTH / 2 - RESTART_WIDTH / 2, CANVAS_HEIGHT / 2 - RESTART_WIDTH * RESTART_HRW / 2, "image");
     this.restart.update();
-    var that = this;
     // When restart button is clicked, clear the canvas, init the components and then start the waiting page 
-    document.onclick = function (e) {
-      var clickedX = e.pageX - that.canvas.offsetLeft;
-      var clickedY = e.pageY - that.canvas.offsetTop;
-      if (clickedX >= that.restart.x && clickedX <= that.restart.x + that.restart.width && clickedY >= that.restart.y && clickedY <= that.restart.y + that.restart.height) {
-        that.clearCanvas();
-        waiting = true;
-        init();
-        wait();
-      }
-    };
+    document.removeEventListener(eventType, triggerWhenPlay);
+    document.addEventListener(eventType, triggerWhenRestart);
   },
 
   clearCanvas: function () {
@@ -302,18 +293,6 @@ var myGameArea = {
     this.cube.y += 10;
   },
 
-  // bind jump action with click event
-  bindKeys: function () {
-    // Do this because inner function cannot get 'this' of outer scope
-    var cube = this.cube;
-    var canvas = this.canvas;
-    document.onclick = function (e) {
-      if (e.target == canvas) {
-        cube.accelerate(-8);
-      }
-    };
-  },
-
   // Start refreshing of waiting
   startWaiting: function () {
     this.frameno = 0;
@@ -329,7 +308,6 @@ var myGameArea = {
 
   // Start refreshing of playing
   startPlaying: function () {
-    this.bindKeys();
     if (!this.playTimer) {
       this.playTimer = setInterval(updatePlay, 20);
     }
@@ -375,7 +353,8 @@ function updateWait() {
   // Check if it's in waiting progress in every update
   if (!waiting) {
     myGameArea.stopWaiting();
-    document.onclick = null;
+    document.removeEventListener(eventType, triggerWhenWait);
+    document.addEventListener(eventType, triggerWhenPlay);
     myGameArea.startPlaying();
   }
 
@@ -428,6 +407,46 @@ function updateFlop() {
 }
 
 /* 
+  ---------- Define event function of click / touch ----------
+
+  1. Waiting: click / touch means stop waiting & start playing & jump a bit
+  2. Playing: click / touch means jump a bit
+  3. Restarting: click / touch means start waiting
+*/
+
+function triggerWhenWait(e) {
+  if (e.target == myGameArea.canvas) {
+    waiting = !waiting;
+    myGameArea.cube.accelerate(-8);
+  }
+}
+
+function triggerWhenPlay(e) {
+  if (e.target == myGameArea.canvas) {
+    myGameArea.cube.accelerate(-8);
+  }
+}
+
+function triggerWhenRestart(e) {
+  var clickedX, clickedY;
+  if (e.type == "click") {
+    clickedX = e.pageX - myGameArea.canvas.offsetLeft;
+    clickedY = e.pageY - myGameArea.canvas.offsetTop;
+  } else if (e.type == "touchstart") {
+    var touch = e.touches[0] || e.changedTouches[0];
+    clickedX = touch.pageX - myGameArea.canvas.offsetLeft;
+    clickedY = touch.pageY - myGameArea.canvas.offsetTop;
+  }
+
+  if (clickedX >= myGameArea.restart.x && clickedX <= myGameArea.restart.x + myGameArea.restart.width && clickedY >= myGameArea.restart.y && clickedY <= myGameArea.restart.y + myGameArea.restart.height) {
+    myGameArea.clearCanvas();
+    waiting = true;
+    init();
+    wait();
+  }
+}
+
+/* 
   ---------- Define the behavior when loaded ----------
 
   First, init all components and timers
@@ -445,18 +464,18 @@ function init() {
 }
 
 function wait() {
-  document.onclick = function (e) {
-    if (e.target == myGameArea.canvas) {
-      waiting = !waiting;
-      myGameArea.cube.accelerate(-8);
-    }
-  };
+  document.removeEventListener(eventType, triggerWhenRestart);
+  document.addEventListener(eventType, triggerWhenWait);
   myGameArea.startWaiting();
 }
 
 var waiting = true;
+var eventType = "click";
 
 document.body.onload = function () {
+  if (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
+    eventType = "touchstart";
+  }
   init();
   wait();
 };
