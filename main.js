@@ -281,6 +281,16 @@ var myGameArea = {
     myGameArea.frameno++;
   },
 
+  // Playing page, redraw background / Obstacles / base / cube / score
+  updateWhenPlay: function () {
+    this.updateBackground();
+    this.updateObstacles();
+    this.updateBase();
+    this.updateCube();
+    this.updateScore();
+    this.frameno++;
+  },
+
   // Flopping page, redraw beckground / obstacles / base / score / cube, cube should move down untill reaching the bottom
   updateWhenFlop: function () {
     this.background.update();
@@ -378,12 +388,7 @@ function updatePlay() {
   }
 
   myGameArea.clearCanvas();
-  myGameArea.updateBackground();
-  myGameArea.updateCube();
-  myGameArea.updateObstacles();
-  myGameArea.updateBase();
-  myGameArea.updateScore();
-  myGameArea.frameno++;
+  myGameArea.updateWhenPlay();
 
   if (final) {
     myGameArea.drawRestart();
